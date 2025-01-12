@@ -1,5 +1,5 @@
 folium==0.18.0
-geopandas==0.12.2
+geopandas==0.14.4
 numpy>=1.25
 Shapely==2.0.6
 streamlit==1.40.1
