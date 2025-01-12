@@ -10,13 +10,13 @@ from streamlit_folium import folium_static
 
 @st.cache_data
 def crime_worst_x(rank, item):
-    merged_df = gpd.read_file("/media/mk/Data/Documents/source/public_traffic/data/2023_東京都犯罪件数.geojson")
+    merged_df = gpd.read_file("./data/2023_東京都犯罪件数.geojson")
     gdf = gpd.GeoDataFrame(merged_df, geometry='geometry')
     gdf = gdf.to_crs(epsg=4326)
     return gdf.sort_values(item, ascending=False).head(rank)
 
 def root_map():
-    gdf_railway = gpd.read_file("/media/mk/Data/Documents/source/public_traffic/data/N02-19_RailroadSection.geojson")
+    gdf_railway = gpd.read_file("./data/N02-19_RailroadSection.geojson")
     in_tokyo = ['横須賀線', '山手線', '赤羽線（埼京線）', '総武線', '中央線', '東海道線', '東北線（埼京線）', '東北線', '南武線', '武蔵野線']
     return gdf_railway[(gdf_railway["運営会社"] == "東日本旅客鉄道") & (gdf_railway["路線名"].isin(in_tokyo))]
 
