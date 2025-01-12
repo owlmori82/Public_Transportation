@@ -1,0 +1,127 @@
+以下のコードはすごく実行速度が遅いので、casheを利用して早くなるようにコードを修正してください。
+
+[コード]
+import pandas as pd
+import geopandas as gpd
+import plotly.express as px
+from shapely.geometry import LineString
+import streamlit as st
+# import osmnx as ox  # OpenStreetMap データを扱うライブラリ
+import json
+
+def flip_coordinates(geom):
+    if geom.is_empty:
+        return geom
+    if geom.geom_type == "Polygon":
+        return Polygon([(y, x) for x, y in geom.exterior.coords])
+    elif geom.geom_type == "MultiPolygon":
+        return MultiPolygon([Polygon([(y, x) for x, y in poly.exterior.coords]) for poly in geom.geoms])
+    else:
+        return geom
+#タイトル    
+st.title("東京都犯罪件数と鉄道路線マップ")
+
+with st.form(key = 'setting'):
+    #テキスト
+    st.text("2023年の東京都の丁目毎の犯罪件数と路線との関係をしめす。")
+    #犯罪種類の選択
+    item = st.selectbox(
+                '犯罪種類',
+                ('総合計', '凶悪犯計', '強盗','その他1', '粗暴犯計', '凶器準備集合', '暴行', '傷害', '脅迫', '恐喝', 
+                '侵入窃盗計','金庫破り','学校荒し', '事務所荒し', '出店荒し', '空き巣', '忍込み', '居空き', 'その他2', 
+                '非侵入窃盗計', '自動車盗','オートバイ盗', '自転車盗', '車上ねらい', '自販機ねらい', '工事場ねらい', 'すり', 
+                'ひったくり', '置引き','万引き', 'その他3', 'その他計', '詐欺', '占有離脱物横領', 'その他知能犯', '賭博', 'その他刑法犯')
+            )
+    
+    #ワースト
+    rank = st.radio(
+                'ワースト○位まで',
+                (0,20,50,100,150)
+            )
+    ok_btn = st.form_submit_button('OK')
+    #if ok_btn:
+    #    st.text("実行中")
+              
+merged_df = gpd.read_file("/media/mk/Data/Documents/source/public_traffic/data/2023_東京都犯罪件数.geojson")
+
+
+# データフレームを GeoDataFrame に変換
+gdf = gpd.GeoDataFrame(merged_df, geometry='geometry')
+
+# 必要に応じて座標系を設定（データが EPSG:2451 の場合）
+if gdf.crs is None or gdf.crs.to_epsg() != 4326:
+    gdf = gdf.to_crs(epsg=4326)
+
+# 座標を確認し、必要であれば修正
+# gdf['geometry'] = gdf['geometry'].apply(flip_coordinates)
+
+# プロット用にデータをソートし上位20件を取得
+gdf = gdf.sort_values(item, ascending=False).head(rank)
+
+# GeoJSON形式に変換
+gdf['index'] = gdf.index
+data_geojson = json.loads(gdf.to_json())
+    
+# #鉄道データを取得 (例: OSMから鉄道データを取得)
+# 東京中心のデータを取得
+gdf_railway = gpd.read_file("/media/mk/Data/Documents/source/public_traffic/data/N02-19_RailroadSection.geojson")
+in_tokyo = ['横須賀線','山手線','赤羽線（埼京線）','総武線','中央線','東海道線','東北線（埼京線）','東北線','南武線','武蔵野線']
+gdf_tokyo_railway = gdf_railway[(gdf_railway["運営会社"] == "東日本旅客鉄道") & (gdf_railway["路線名"].isin(in_tokyo))]
+gdf_tmp = gdf_tokyo_railway.dissolve(by="路線名")
+gdf_tmp.reset_index(inplace=True)
+gdf_tmp.geometry = gdf_tmp.buffer(0.0008)
+# gdf_tmp = gdf_tmp.to_crs(epsg = 4326)
+gdf_tokyo_railway = gdf_tmp
+geojson_railway = json.loads(gdf_tokyo_railway.to_json())
+
+
+# 地図を作成
+fig = px.choropleth_mapbox(
+    #geopandasデータフレーム
+    gdf,
+    #データフレームをjsonに変換したもの
+    geojson=data_geojson,
+    #データフレームの項目でjsonと一致するキーをセットする。
+    locations=gdf["住所"],
+    #jsonの中のproperties内の属性にキーとなる項目が入っている必要がある。
+    featureidkey="properties.住所",
+    hover_name='S_NAME',
+    color=item,
+    color_continuous_scale="Reds",
+    range_color=(gdf[item].min(), gdf[item].max()),
+    mapbox_style="carto-positron",
+    zoom=10,
+    center={"lat": 35.6824, "lon": 139.7690},
+    opacity=0.6,
+    labels={item: "犯罪件数"}
+)
+
+# 鉄道データを重ねて表示
+count = 0
+while count < len(in_tokyo):
+    fig.add_trace(
+        px.choropleth_mapbox(
+            gdf_tokyo_railway,
+            geojson = geojson_railway,
+            locations = gdf_tokyo_railway["路線名"],
+            featureidkey = "properties.路線名",
+            hover_name = '路線名',
+            mapbox_style="carto-positron",
+#             color_continuous_scale= None,
+#             range_color= None,
+            zoom=10,
+            center={"lat": 35.6824, "lon": 139.7690},
+            color='路線名'
+            ).data[count]  # trace を直接取得して追加
+    )
+#     fig.update_layout(coloraxis_showscale=False)
+    count += 1
+
+# レイアウト調整と表示
+fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0},showlegend=False)
+#fig.show()
+
+# Streamlitで表示
+
+st.plotly_chart(fig, use_container_width=True,width=500)
+
