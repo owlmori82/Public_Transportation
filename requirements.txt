@@ -1,5 +1,5 @@
-Fiona==1.9.1
-GDAL==3.6.2
+Fiona==1.8.22
+GDAL==2.4.4
 folium==0.18.0
 geopandas==0.12.2
 numpy>=1.25
