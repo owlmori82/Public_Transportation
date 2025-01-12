@@ -1,10 +1,7 @@
-gdal==3.4.3
-fiona==1.8.22
-geopandas==0.12.2
-numpy>=1.25.0
-Shapely==2.0.6
+python==3.8.20
 folium==0.18.0
+geopandas==0.12.2
+numpy==1.24.4
+Shapely==2.0.6
 streamlit==1.40.1
 streamlit_folium==0.22.1
-
-
