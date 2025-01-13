@@ -7,6 +7,7 @@ import folium
 from folium.features import GeoJsonTooltip
 import random
 from streamlit_folium import folium_static
+from PIL import Image
 
 @st.cache_data
 def crime_worst_x(rank, item):
@@ -78,11 +79,35 @@ def draw_lines(gdf_railway, map_object):
     return map_object
 
 st.title("東京都犯罪件数と鉄道路線マップ")
+
+st.markdown("""
+2023年の東京都の犯罪件数を丁目区域毎に地図上に色分けして表示します。
+
+1. **犯罪種類と表示件数の設定**  
+   - 指定した犯罪種類と件数に基づき、該当地域を地図上で色分けして表示します。
+
+2. **犯罪件数に応じた色分け表示**  
+   - 地図上で犯罪件数に応じて地域を色分けし、一目で状況を把握できます。
+
+3. **詳細情報のポップアップ表示**  
+   - 色分けされた地域にカーソルを合わせると、該当地域の住所と犯罪件数がポップアップで表示されます。
+
+4. **地図の縮尺変更**  
+   - 地図は自由に拡大・縮小可能で、詳細確認や広域把握が可能です。
+
+5. **JR路線図の重ね合わせ表示**  
+   - 地図上にJR路線図を表示し、路線と犯罪多発地域の関係性を確認できます。          
+"""
+)
+st.text("【表示例】")
+img = Image.open("./data/show_map.png")
+st.image(img)
+
 if "map" not in st.session_state:
     st.session_state.map = draw_tokyo()
 
 with st.form(key='setting'):
-    st.text("2023年の東京都の丁目毎の犯罪件数と路線との関係をしめす。")
+    
     item = st.selectbox(
         '犯罪種類',
         ('総合計', '凶悪犯計', '強盗', 'その他1', '粗暴犯計', '凶器準備集合', '暴行', '傷害', '脅迫', '恐喝',
@@ -91,9 +116,10 @@ with st.form(key='setting'):
          'ひったくり', '置引き', '万引き', 'その他3', 'その他計', '詐欺', '占有離脱物横領', 'その他知能犯', '賭博', 'その他刑法犯')
     )
     rank = st.radio(
-        'ワースト○位まで',
+        'ワースト○位まで表示',
         (0, 20, 50, 100, 150)
     )
+   
     ok_btn = st.form_submit_button('設定')
 
 if ok_btn:
@@ -102,5 +128,5 @@ if ok_btn:
     st.session_state.map = draw_tokyo()
     st.session_state.map = draw_crime(gdf_crime, st.session_state.map, item)
     st.session_state.map = draw_lines(gdf_railway, st.session_state.map)
-     
+st.text("【設定条件で地図上に表示】")     
 map_data = folium_static(st.session_state.map,width=700)
