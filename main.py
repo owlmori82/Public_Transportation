@@ -26,38 +26,63 @@ def draw_tokyo():
     tokyo_map = folium.Map(location=tokyo23_location, tiles='cartodbpositron', zoom_start=10)
     return tokyo_map
 
-def draw_crime(gdf, t_map, item):
-    geojson_data = json.loads(gdf.to_json())
+def draw_crime(gdf,t_map,item):
+    t_gdf = gdf[gdf[item] > 0]
+    #geojsonに変換
+    geojson_data = json.loads(t_gdf.to_json())
+    # 総合計の最小値と最大値を取得
     min_value = gdf[item].min()
     max_value = gdf[item].max()
+
+    # しきい値のスケールを動的に設定 (例: 10区分)
     interval = max_value - min_value
-    num_bins = 10 if interval >= 10 else interval
-    threshold_scale = np.linspace(min_value, max_value, num_bins + 1, endpoint=True).tolist()
+    if  interval < 10:
+        num_bins = interval
+    else:
+        num_bins = 10
+    threshold_scale = np.linspace(min_value, max_value, num_bins + 1,endpoint=True).tolist()
+    #スケールの幅が3個以下の場合、スケールの幅を広げる
+    if len(threshold_scale) < 4:
+        while (len(threshold_scale) < 4):
+            threshold_scale.append(max(threshold_scale) + 1)
+    print(min_value,max_value)
+    print(threshold_scale)
+       
+    # Choroplethを描画して、色分けを適用
     choropleth = folium.Choropleth(
-        geo_data=geojson_data,
+        geo_data= geojson_data,
         data=gdf,
-        columns=['住所', item],
+        columns=['住所',item],
         key_on='properties.住所',
         fill_color='RdPu',
         threshold_scale=threshold_scale,
         fill_opacity=0.7,
         line_opacity=0.2,
-        legend_name=item
+        legend_name= item
     )
     choropleth.add_to(t_map)
+
+    # Choroplethの GeoJson データにホバー用フィールドを追加
     for feature in choropleth.geojson.data['features']:
         feature['properties']['tooltip'] = feature['properties']['住所'] + " / " + item + ":" + str(feature['properties'][item]) + "件"
+
+    # GeoJsonを再構成してホバーを追加
     geojson = folium.GeoJson(
         choropleth.geojson.data,
-        style_function=lambda feature: {
-            'fillColor': feature['properties'].get('fillColor', 'gray'),
-            'color': 'black',
-            'weight': 0.5,
-            'fillOpacity': 0.0
+        style_function = lambda feature:{
+            'fillColor':feature['properties'].get('fillColor','gray'),    # Choropleth の色を維持
+            'color':'black',  #ポリゴンの枠線の色
+            'weight':0.5,     #枠線の太さ
+            'fillOpacity':0.0 #塗りつぶしの透明度
         },
-        tooltip=GeoJsonTooltip(fields=['tooltip'], aliases=['住所:'], localize=True)
+        tooltip=GeoJsonTooltip(
+            fields=['tooltip'],  # 追加した 'tooltip' フィールドを使用
+            aliases=['住所:'],   # 表示する際のラベル
+            localize=True        # ローカライズ
+        )
     )
-    geojson.add_to(t_map)
+
+    geojson.add_to(t_map)   
     return t_map
 
 def draw_lines(gdf_railway, map_object):
