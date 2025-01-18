@@ -10,8 +10,8 @@ from streamlit_folium import folium_static
 from PIL import Image
 
 @st.cache_data
-def crime_worst_x(rank, item):
-    merged_df = gpd.read_file("./data/2023_東京都犯罪件数.geojson")
+def crime_worst_x(rank, item,year):
+    merged_df = gpd.read_file("./data/" + year + "_東京都犯罪件数.geojson")
     gdf = gpd.GeoDataFrame(merged_df, geometry='geometry')
     gdf = gdf.to_crs(epsg=4326)
     return gdf.sort_values(item, ascending=False).head(rank)
@@ -83,7 +83,10 @@ def draw_crime(gdf,t_map,item):
     )
 
     geojson.add_to(t_map)   
-    return t_map
+    if max_value == 0:
+        return 'NG'
+    else:
+        return t_map
 
 def draw_lines(gdf_railway, map_object):
     def random_color():
@@ -133,6 +136,10 @@ if "map" not in st.session_state:
 
 with st.form(key='setting'):
     
+    t_year = st.selectbox(
+        '対象年',
+        ('2019','2020','2021','2022','2023')
+    )
     item = st.selectbox(
         '犯罪種類',
         ('総合計', '凶悪犯計', '強盗', 'その他1', '粗暴犯計', '凶器準備集合', '暴行', '傷害', '脅迫', '恐喝',
@@ -142,16 +149,20 @@ with st.form(key='setting'):
     )
     rank = st.radio(
         'ワースト○位まで表示',
-        (0, 20, 50, 100, 150)
+        (10, 20, 50, 100, 150)
     )
    
     ok_btn = st.form_submit_button('設定')
 
 if ok_btn:
-    gdf_crime = crime_worst_x(rank, item)
+    gdf_crime = crime_worst_x(rank, item,t_year)
     gdf_railway = root_map()
     st.session_state.map = draw_tokyo()
     st.session_state.map = draw_crime(gdf_crime, st.session_state.map, item)
-    st.session_state.map = draw_lines(gdf_railway, st.session_state.map)
+    if st.session_state.map == 'NG':
+        st.text("0件のため表示できるデータがありません")
+        st.session_state.map = draw_tokyo()
+    else:
+        st.session_state.map = draw_lines(gdf_railway, st.session_state.map)
 st.text("【設定条件で地図上に表示】")     
 map_data = folium_static(st.session_state.map,width=700)
