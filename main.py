@@ -45,8 +45,8 @@ def draw_crime(gdf,t_map,item):
     if len(threshold_scale) < 4:
         while (len(threshold_scale) < 4):
             threshold_scale.append(max(threshold_scale) + 1)
-    print(min_value,max_value)
-    print(threshold_scale)
+    #print(min_value,max_value)
+    #print(threshold_scale)
        
     # Choroplethを描画して、色分けを適用
     choropleth = folium.Choropleth(
@@ -138,7 +138,7 @@ with st.form(key='setting'):
     
     t_year = st.selectbox(
         '対象年',
-        ('2019','2020','2021','2022','2023')
+        ('2019','2020','2021','2022','2023','2024')
     )
     item = st.selectbox(
         '犯罪種類',
